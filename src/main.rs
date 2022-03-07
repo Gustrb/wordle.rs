@@ -141,48 +141,67 @@ impl Game {
     }
 }
 
-fn display_round_changelog(changelog: Vec<(char, LetterStatus)>) {
-    for change in changelog {
-        let change_str = format!("{}", change.0);
+trait GameClient {
+    fn get_new_guess(&self) -> String;
+    fn display_round_changelog(&self, changelog: Vec<(char, LetterStatus)>);
+    fn display_error_message(&self, error: &WordErrorStatus);
+}
 
-        if matches!(change.1, LetterStatus::Correct) {
-            print!(" {} ", change_str.blue());
-        }
+struct TerminalGameClient;
 
-        if matches!(change.1, LetterStatus::WrongPosition) {
-            print!(" {} ", change_str.yellow());
-        }
-
-        if matches!(change.1, LetterStatus::Wrong) {
-            print!(" {} ", change_str.red());
-        }
+impl GameClient for TerminalGameClient {
+    fn get_new_guess(&self) -> String {
+        println!("Type your guess");
+        read!("{}\n")
     }
 
-    println!();
+    fn display_round_changelog(&self, changelog: Vec<(char, LetterStatus)>) {
+        for change in changelog {
+            let change_str = format!("{}", change.0);
+
+            if matches!(change.1, LetterStatus::Correct) {
+                print!(" {} ", change_str.blue());
+            }
+
+            if matches!(change.1, LetterStatus::WrongPosition) {
+                print!(" {} ", change_str.yellow());
+            }
+
+            if matches!(change.1, LetterStatus::Wrong) {
+                print!(" {} ", change_str.red());
+            }
+        }
+        println!();
+    }
+
+    fn display_error_message(&self, error: &WordErrorStatus) {
+        println!("{}", error.to_string());
+    }
 }
 
 fn main() {
     let mut game = Game::new();
-    
+    let client = TerminalGameClient {};
     let mut running = true;
 
     while running {
-        println!("Type your guess");
-        let guess: String = read!("{}\n");
-
+        let guess = client.get_new_guess();
         match game.take_a_guess(guess.to_lowercase()) {
             Err(message) => {
-                println!("{}", message.to_string());
+                client.display_error_message(&message);
 
                 if matches!(message, WordErrorStatus::GameOver) {
                     running = false;
                 }
             },
-            Ok(is_over) => {
-                display_round_changelog(is_over.1);
+            Ok(round) => {
+                // The second element in the tuple is all the changes in the hash that happend in
+                // the given round
+                client.display_round_changelog(round.1);
 
-                if is_over.0 {
-                    return;
+                // the first element on the tuple is wheter the word was guessed successfully
+                if round.0 {
+                    running = false;
                 }
             }
         }
