@@ -121,7 +121,7 @@ impl Game {
     }
 }
 
-fn display_game_state(game: &Game, changelog: Vec<(char, LetterStatus)>) {
+fn display_round_changelog(changelog: Vec<(char, LetterStatus)>) {
     for change in changelog {
         if matches!(change.1, LetterStatus::Correct) {
             let change_str = format!("{}", change.0);
@@ -154,6 +154,7 @@ fn main() {
         match game.take_a_guess(guess.to_lowercase()) {
             Err(message) => {
                 running = false;
+                println!("{}", message);
             },
             Ok(is_over) => {
                 if is_over.0 {
@@ -161,7 +162,7 @@ fn main() {
                     return;
                 }
 
-                display_game_state(&game, is_over.1);
+                display_round_changelog(is_over.1);
             }
         }
     }
