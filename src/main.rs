@@ -22,6 +22,22 @@ enum LetterStatus {
     WrongPosition,
 }
 
+enum WordErrorStatus {
+    WordTooLong,
+    WordDoesNotExist,
+    GameOver,
+}
+
+impl ToString for WordErrorStatus {
+    fn to_string(&self) -> String {
+        match *self {
+            WordErrorStatus::GameOver => "Game over!",
+            WordErrorStatus::WordDoesNotExist => "This word does not exist!",
+            WordErrorStatus::WordTooLong => "Only 5 letter words are accepted"
+        }.to_string()
+    }
+}
+
 fn fetch_words_from_file(filename: &str) -> Vec<String> {
     let mut words = Vec::new();
 
@@ -70,13 +86,17 @@ impl Game {
         valid_words.contains(&word)
     }
 
-    fn take_a_guess(&mut self, word: String) -> Result<(bool, Vec<(char, LetterStatus)>), String> {
+    fn take_a_guess(&mut self, word: String) -> Result<(bool, Vec<(char, LetterStatus)>), WordErrorStatus> {
         if word.len() != 5 {
-            return Err("The word must be 5 characters long".to_string());
+            return Err(WordErrorStatus::WordTooLong);
         }
 
         if self.attempts.len() == 6 {
-            return Err("Max attempts achieved!".to_string());
+            return Err(WordErrorStatus::GameOver);
+        }
+
+        if !self.is_valid_word(word.clone()) {
+            return Err(WordErrorStatus::WordDoesNotExist);
         }
         
         self.attempts.push(word.clone());
@@ -123,18 +143,17 @@ impl Game {
 
 fn display_round_changelog(changelog: Vec<(char, LetterStatus)>) {
     for change in changelog {
+        let change_str = format!("{}", change.0);
+
         if matches!(change.1, LetterStatus::Correct) {
-            let change_str = format!("{}", change.0);
             print!(" {} ", change_str.blue());
         }
 
         if matches!(change.1, LetterStatus::WrongPosition) {
-            let change_str = format!("{}", change.0);
             print!(" {} ", change_str.yellow());
         }
 
         if matches!(change.1, LetterStatus::Wrong) {
-            let change_str = format!("{}", change.0);
             print!(" {} ", change_str.red());
         }
     }
@@ -153,16 +172,18 @@ fn main() {
 
         match game.take_a_guess(guess.to_lowercase()) {
             Err(message) => {
-                running = false;
-                println!("{}", message);
+                println!("{}", message.to_string());
+
+                if matches!(message, WordErrorStatus::GameOver) {
+                    running = false;
+                }
             },
             Ok(is_over) => {
+                display_round_changelog(is_over.1);
+
                 if is_over.0 {
-                    println!("The word was {}", guess);
                     return;
                 }
-
-                display_round_changelog(is_over.1);
             }
         }
     }
