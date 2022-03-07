@@ -139,6 +139,34 @@ impl Game {
 
         result
     }
+
+    fn main_game_loop(&mut self, client: &dyn GameClient) {
+        let mut running = true;
+
+        while running {
+            let guess = client.get_new_guess();
+            match self.take_a_guess(guess.to_lowercase()) {
+                Err(message) => {
+                    client.display_error_message(&message);
+
+                    if matches!(message, WordErrorStatus::GameOver) {
+                        running = false;
+                    }
+                },
+                Ok(round) => {
+                    // The second element in the tuple is all the changes in the hash that happend in
+                    // the given round
+                    client.display_round_changelog(round.1);
+
+                    // the first element on the tuple is wheter the word was guessed successfully
+                    if round.0 {
+                        running = false;
+                    }
+                }
+            }
+
+        }
+    }
 }
 
 trait GameClient {
@@ -182,29 +210,6 @@ impl GameClient for TerminalGameClient {
 fn main() {
     let mut game = Game::new();
     let client = TerminalGameClient {};
-    let mut running = true;
-
-    while running {
-        let guess = client.get_new_guess();
-        match game.take_a_guess(guess.to_lowercase()) {
-            Err(message) => {
-                client.display_error_message(&message);
-
-                if matches!(message, WordErrorStatus::GameOver) {
-                    running = false;
-                }
-            },
-            Ok(round) => {
-                // The second element in the tuple is all the changes in the hash that happend in
-                // the given round
-                client.display_round_changelog(round.1);
-
-                // the first element on the tuple is wheter the word was guessed successfully
-                if round.0 {
-                    running = false;
-                }
-            }
-        }
-    }
+    game.main_game_loop(&client);
 }
 
